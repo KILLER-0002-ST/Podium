@@ -1,0 +1,48 @@
+server {
+    server_name podiam.app 35.183.155.122;
+    client_max_body_size 200M;  # Increase request size limit
+
+    # Add CORS headers to all responses
+    add_header 'Access-Control-Allow-Origin' '*' always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE, PATCH' always;
+    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-CSRFToken' always;
+    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range,X-CSRFToken' always;
+    add_header 'Access-Control-Allow-Credentials' 'true' always;
+
+    location /media {
+        autoindex on;
+        alias  /home/ubuntu/pulpit/media;
+    }
+
+    # Handle preflight requests
+    location / {
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE, PATCH' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-CSRFToken' always;
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Access-Control-Allow-Credentials' 'true' always;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+        include proxy_params;
+        proxy_pass http://unix:/run/gunicorn.sock;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/podiam.app/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/podiam.app/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = podiam.app) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name podiam.app 35.183.155.122;
+    return 404; # managed by Certbot
+}
